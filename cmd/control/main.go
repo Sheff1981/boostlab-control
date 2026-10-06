@@ -36,9 +36,27 @@ func main() {
 	}
 	log.Info("game catalog loaded", "count", len(games))
 
+	social, err := api.NewPersistentSocialHub(cfg.SocialDataFile)
+	if err != nil {
+		log.Error("failed to load social history", "error", err)
+		os.Exit(2)
+	}
+	log.Info("social history loaded", "path", cfg.SocialDataFile)
+
+	voiceIce, err := api.ParseVoiceIceConfig(
+		os.Getenv("BOOSTLAB_TURN_URLS"),
+		os.Getenv("BOOSTLAB_TURN_USERNAME"),
+		os.Getenv("BOOSTLAB_TURN_CREDENTIAL"),
+	)
+	if err != nil {
+		log.Error("invalid TURN configuration", "error", err)
+		os.Exit(2)
+	}
+	log.Info("voice ICE configuration loaded", "servers", len(voiceIce.IceServers))
+
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewServerWithGames(registry, games).Routes(),
+		Handler:           api.NewServerWithDependencies(registry, games, social, voiceIce).Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
