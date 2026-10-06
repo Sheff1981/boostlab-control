@@ -60,17 +60,31 @@ type Server struct {
 	Registry *Registry
 	Social   *SocialHub
 	Games    []GameCatalogEntry
+	VoiceIce VoiceIceConfig
 }
 
 func NewServer(registry *Registry) Server {
-	return NewServerWithGames(registry, nil)
+	return NewServerWithDependencies(registry, nil, NewSocialHub(), VoiceIceConfig{})
 }
 
 func NewServerWithGames(registry *Registry, games []GameCatalogEntry) Server {
+	return NewServerWithDependencies(registry, games, NewSocialHub(), VoiceIceConfig{})
+}
+
+func NewServerWithDependencies(
+	registry *Registry,
+	games []GameCatalogEntry,
+	social *SocialHub,
+	voiceIce VoiceIceConfig,
+) Server {
+	if social == nil {
+		social = NewSocialHub()
+	}
 	return Server{
 		Registry: registry,
-		Social:   NewSocialHub(),
+		Social:   social,
 		Games:    append([]GameCatalogEntry(nil), games...),
+		VoiceIce: voiceIce,
 	}
 }
 
@@ -91,6 +105,12 @@ func (s Server) Routes() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(s.Games)
+	})
+
+	mux.HandleFunc("GET /v1/voice/ice", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(s.VoiceIce)
 	})
 
 	mux.HandleFunc("GET /v1/squads/{code}/events", func(w http.ResponseWriter, r *http.Request) {
