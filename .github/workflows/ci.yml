@@ -27,10 +27,14 @@ jobs:
         run: |
           mkdir -p dist
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/boostlab-control-linux-amd64 ./cmd/control
-      - name: Upload Linux control plane
+      - name: Build Windows control plane
+        run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/boostlab-control-windows-amd64.exe ./cmd/control
+      - name: Upload control plane builds
         uses: actions/upload-artifact@v4
         with:
-          name: boostlab-control-linux-amd64
-          path: dist/boostlab-control-linux-amd64
+          name: boostlab-control-binaries
+          path: |
+            dist/boostlab-control-linux-amd64
+            dist/boostlab-control-windows-amd64.exe
           if-no-files-found: error
           retention-days: 14
