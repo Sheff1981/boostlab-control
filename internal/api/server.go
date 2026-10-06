@@ -15,6 +15,7 @@ type Node struct {
 	Region             string    `json:"region"`
 	Host               string    `json:"host"`
 	UDPPort            int       `json:"udp_port"`
+	RouteAPIURL        string    `json:"route_api_url,omitempty"`
 	WireGuardPublicKey string    `json:"wireguard_public_key,omitempty"`
 	WireGuardPort      int       `json:"wireguard_port,omitempty"`
 	Healthy            bool      `json:"healthy"`
@@ -57,18 +58,19 @@ func (r *Registry) List() []Node {
 }
 
 type Server struct {
-	Registry *Registry
-	Social   *SocialHub
-	Games    []GameCatalogEntry
-	VoiceIce VoiceIceProvider
+	Registry     *Registry
+	Social       *SocialHub
+	Games        []GameCatalogEntry
+	RouteTargets []GameRouteTarget
+	VoiceIce     VoiceIceProvider
 }
 
 func NewServer(registry *Registry) Server {
-	return NewServerWithDependencies(registry, nil, NewSocialHub(), VoiceIceProvider{})
+	return NewServerWithFullDependencies(registry, nil, nil, NewSocialHub(), VoiceIceProvider{})
 }
 
 func NewServerWithGames(registry *Registry, games []GameCatalogEntry) Server {
-	return NewServerWithDependencies(registry, games, NewSocialHub(), VoiceIceProvider{})
+	return NewServerWithFullDependencies(registry, games, nil, NewSocialHub(), VoiceIceProvider{})
 }
 
 func NewServerWithDependencies(
@@ -77,14 +79,25 @@ func NewServerWithDependencies(
 	social *SocialHub,
 	voiceIce VoiceIceProvider,
 ) Server {
+	return NewServerWithFullDependencies(registry, games, nil, social, voiceIce)
+}
+
+func NewServerWithFullDependencies(
+	registry *Registry,
+	games []GameCatalogEntry,
+	routeTargets []GameRouteTarget,
+	social *SocialHub,
+	voiceIce VoiceIceProvider,
+) Server {
 	if social == nil {
 		social = NewSocialHub()
 	}
 	return Server{
-		Registry: registry,
-		Social:   social,
-		Games:    append([]GameCatalogEntry(nil), games...),
-		VoiceIce: voiceIce,
+		Registry:     registry,
+		Social:       social,
+		Games:        append([]GameCatalogEntry(nil), games...),
+		RouteTargets: append([]GameRouteTarget(nil), routeTargets...),
+		VoiceIce:     voiceIce,
 	}
 }
 
@@ -105,6 +118,14 @@ func (s Server) Routes() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(s.Games)
+	})
+
+	mux.HandleFunc("GET /v1/route-targets", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(
+			filterRouteTargets(s.RouteTargets, r.URL.Query().Get("package_name")),
+		)
 	})
 
 	mux.HandleFunc("GET /v1/voice/ice", func(w http.ResponseWriter, r *http.Request) {
