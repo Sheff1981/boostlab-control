@@ -29,9 +29,16 @@ func main() {
 	}
 	log.Info("bootstrap nodes loaded", "count", len(seedNodes))
 
+	games, err := api.ParseGameCatalog(os.Getenv("BOOSTLAB_GAMES_JSON"))
+	if err != nil {
+		log.Error("invalid game catalog configuration", "error", err)
+		os.Exit(2)
+	}
+	log.Info("game catalog loaded", "count", len(games))
+
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewServer(registry).Routes(),
+		Handler:           api.NewServerWithGames(registry, games).Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
