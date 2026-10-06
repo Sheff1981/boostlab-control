@@ -9,12 +9,14 @@ import (
 )
 
 type Node struct {
-	ID      string    `json:"id"`
-	Region  string    `json:"region"`
-	Host    string    `json:"host"`
-	UDPPort int       `json:"udp_port"`
-	Healthy bool      `json:"healthy"`
-	Updated time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Region             string    `json:"region"`
+	Host               string    `json:"host"`
+	UDPPort            int       `json:"udp_port"`
+	WireGuardPublicKey string    `json:"wireguard_public_key,omitempty"`
+	WireGuardPort      int       `json:"wireguard_port,omitempty"`
+	Healthy            bool      `json:"healthy"`
+	Updated            time.Time `json:"updated_at"`
 }
 
 type Registry struct {
