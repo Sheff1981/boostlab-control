@@ -36,6 +36,13 @@ func main() {
 	}
 	log.Info("game catalog loaded", "count", len(games))
 
+	routeTargets, err := api.ParseGameRouteTargets(os.Getenv("BOOSTLAB_GAME_ROUTES_JSON"))
+	if err != nil {
+		log.Error("invalid game route target configuration", "error", err)
+		os.Exit(2)
+	}
+	log.Info("game route targets loaded", "count", len(routeTargets))
+
 	social, err := api.NewPersistentSocialHub(cfg.SocialDataFile)
 	if err != nil {
 		log.Error("failed to load social history", "error", err)
@@ -56,7 +63,13 @@ func main() {
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewServerWithDependencies(registry, games, social, voiceIce).Routes(),
+		Handler:           api.NewServerWithFullDependencies(
+			registry,
+			games,
+			routeTargets,
+			social,
+			voiceIce,
+		).Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
