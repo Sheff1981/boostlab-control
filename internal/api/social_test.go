@@ -42,3 +42,27 @@ func TestSocialHubPresence(t *testing.T) {
 		t.Fatalf("unexpected presence: %#v", items)
 	}
 }
+
+
+func TestPersistentSocialHubRestoresOnlyChat(t *testing.T) {
+	path := t.TempDir() + "/social.json"
+	hub, err := NewPersistentSocialHub(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hub.Append("SQ-RESTORE", "BL-A", "chat", "saved", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hub.Append("SQ-RESTORE", "BL-A", "voice_offer", "", "{\"target\":\"BL-B\"}"); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded, err := NewPersistentSocialHub(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := reloaded.List("SQ-RESTORE", 0)
+	if len(items) != 1 || items[0].Type != "chat" || items[0].Text != "saved" {
+		t.Fatalf("unexpected restored events: %#v", items)
+	}
+}
