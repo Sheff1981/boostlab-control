@@ -75,11 +75,5 @@ func (s Server) Routes() http.Handler {
 		_ = json.NewEncoder(w).Encode(s.Registry.List())
 	})
 
-	mux.HandleFunc("GET /v1/client-policy", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "no-store")
-		_ = json.NewEncoder(w).Encode(DefaultClientPolicy())
-	})
-
 	return mux
 }
