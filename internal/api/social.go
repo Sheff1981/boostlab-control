@@ -206,9 +206,17 @@ func (h *SocialHub) persistLocked() error {
 		return fmt.Errorf("write social data: %w", err)
 	}
 
-	// Windows cannot replace an existing file with os.Rename.
-	_ = os.Remove(h.storagePath)
+	if err := os.Rename(tmp, h.storagePath); err == nil {
+		return nil
+	}
+
+	// Windows cannot replace an existing destination with os.Rename.
+	if err := os.Remove(h.storagePath); err != nil && !os.IsNotExist(err) {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("replace social data: %w", err)
+	}
 	if err := os.Rename(tmp, h.storagePath); err != nil {
+		_ = os.Remove(tmp)
 		return fmt.Errorf("commit social data: %w", err)
 	}
 	return nil
