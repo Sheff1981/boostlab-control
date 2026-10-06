@@ -121,6 +121,71 @@ func (s Server) Routes() http.Handler {
 		_ = json.NewEncoder(w).Encode(config)
 	})
 
+	mux.HandleFunc("GET /v1/direct/{peer}/events", func(w http.ResponseWriter, r *http.Request) {
+		self := strings.TrimSpace(r.URL.Query().Get("self"))
+		peer := strings.TrimSpace(r.PathValue("peer"))
+		room, ok := directRoom(self, peer)
+		if !ok {
+			http.Error(w, "invalid direct chat participants", http.StatusBadRequest)
+			return
+		}
+
+		var after uint64
+		if raw := strings.TrimSpace(r.URL.Query().Get("after")); raw != "" {
+			value, err := strconv.ParseUint(raw, 10, 64)
+			if err != nil {
+				http.Error(w, "invalid after cursor", http.StatusBadRequest)
+				return
+			}
+			after = value
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(s.Social.List(room, after))
+	})
+
+	mux.HandleFunc("POST /v1/direct/{peer}/events", func(w http.ResponseWriter, r *http.Request) {
+		peer := strings.TrimSpace(r.PathValue("peer"))
+		r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+		defer r.Body.Close()
+
+		var input struct {
+			Sender string `json:"sender"`
+			Text   string `json:"text"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		input.Sender = strings.TrimSpace(input.Sender)
+		input.Text = strings.TrimSpace(input.Text)
+		room, ok := directRoom(input.Sender, peer)
+		if !ok {
+			http.Error(w, "invalid direct chat participants", http.StatusBadRequest)
+			return
+		}
+		if input.Text == "" {
+			http.Error(w, "message text is required", http.StatusBadRequest)
+			return
+		}
+		if len(input.Text) > 1000 {
+			http.Error(w, "message too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+
+		event, err := s.Social.Append(room, input.Sender, "chat", input.Text, "")
+		if err != nil {
+			http.Error(w, "failed to persist direct message", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(event)
+	})
+
 	mux.HandleFunc("GET /v1/squads/{code}/events", func(w http.ResponseWriter, r *http.Request) {
 		code, ok := normalizeRoomCode(r.PathValue("code"))
 		if !ok {
