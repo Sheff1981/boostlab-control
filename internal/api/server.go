@@ -64,11 +64,11 @@ type Server struct {
 }
 
 func NewServer(registry *Registry) Server {
-	return NewServerWithDependencies(registry, nil, NewSocialHub(), VoiceIceConfig{})
+	return NewServerWithDependencies(registry, nil, NewSocialHub(), VoiceIceProvider{})
 }
 
 func NewServerWithGames(registry *Registry, games []GameCatalogEntry) Server {
-	return NewServerWithDependencies(registry, games, NewSocialHub(), VoiceIceConfig{})
+	return NewServerWithDependencies(registry, games, NewSocialHub(), VoiceIceProvider{})
 }
 
 func NewServerWithDependencies(
