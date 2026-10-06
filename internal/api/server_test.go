@@ -140,3 +140,33 @@ func TestDirectChatAPI(t *testing.T) {
 		t.Fatalf("unexpected direct events: %#v", events)
 	}
 }
+
+
+func TestRouteTargetsEndpointFiltersByPackage(t *testing.T) {
+	targets := []GameRouteTarget{
+		{ID: "a", PackageNames: []string{"game.a"}, Host: "a.example.com", TCPPort: 443},
+		{ID: "b", PackageNames: []string{"game.b"}, Host: "b.example.com", TCPPort: 443},
+	}
+	h := NewServerWithFullDependencies(
+		NewRegistry(),
+		nil,
+		targets,
+		NewSocialHub(),
+		VoiceIceProvider{},
+	).Routes()
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/route-targets?package_name=game.b", nil)
+	res := httptest.NewRecorder()
+	h.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.Code)
+	}
+
+	var payload []GameRouteTarget
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload) != 1 || payload[0].ID != "b" {
+		t.Fatalf("unexpected route targets: %#v", payload)
+	}
+}
