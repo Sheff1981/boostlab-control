@@ -7,8 +7,10 @@ import (
 
 func TestSocialHubEventsAreOrderedAndIncremental(t *testing.T) {
 	hub := NewSocialHub()
-	first := hub.Append("SQ-1", "BL-A", "chat", "hello", "")
-	second := hub.Append("SQ-1", "BL-B", "chat", "world", "")
+	first, err := hub.Append("SQ-1", "BL-A", "chat", "hello", "")
+	if err != nil { t.Fatal(err) }
+	second, err := hub.Append("SQ-1", "BL-B", "chat", "world", "")
+	if err != nil { t.Fatal(err) }
 
 	if second.ID <= first.ID {
 		t.Fatalf("expected increasing IDs: first=%d second=%d", first.ID, second.ID)
@@ -23,7 +25,7 @@ func TestSocialHubEventsAreOrderedAndIncremental(t *testing.T) {
 func TestSocialHubBoundsRoomHistory(t *testing.T) {
 	hub := NewSocialHub()
 	for i := 0; i < maxRoomEvents+25; i++ {
-		hub.Append("SQ-1", "BL-A", "chat", fmt.Sprintf("%d", i), "")
+		if _, err := hub.Append("SQ-1", "BL-A", "chat", fmt.Sprintf("%d", i), ""); err != nil { t.Fatal(err) }
 	}
 	items := hub.List("SQ-1", 0)
 	if len(items) != maxRoomEvents {
