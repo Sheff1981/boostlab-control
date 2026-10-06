@@ -27,3 +27,25 @@ func TestParseSeedNodesRejectsBadPort(t *testing.T) {
 		t.Fatal("expected invalid port error")
 	}
 }
+
+
+func TestParseSeedNodesAcceptsHTTPSRouteAPI(t *testing.T) {
+	nodes, err := ParseSeedNodes(`[
+		{"id":"eu-1","region":"eu","host":"203.0.113.10","udp_port":51821,"route_api_url":"https://eu-1.example.com","healthy":true}
+	]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nodes) != 1 || nodes[0].RouteAPIURL != "https://eu-1.example.com" {
+		t.Fatalf("unexpected route API: %#v", nodes)
+	}
+}
+
+func TestParseSeedNodesRejectsHTTPRouteAPI(t *testing.T) {
+	_, err := ParseSeedNodes(`[
+		{"id":"eu-1","region":"eu","host":"203.0.113.10","udp_port":51821,"route_api_url":"http://eu-1.example.com","healthy":true}
+	]`)
+	if err == nil {
+		t.Fatal("expected insecure route API rejection")
+	}
+}
