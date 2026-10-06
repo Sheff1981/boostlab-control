@@ -43,16 +43,16 @@ func main() {
 	}
 	log.Info("social history loaded", "path", cfg.SocialDataFile)
 
-	voiceIce, err := api.ParseVoiceIceConfig(
+	voiceIce, err := api.ParseVoiceIceProvider(
 		os.Getenv("BOOSTLAB_TURN_URLS"),
-		os.Getenv("BOOSTLAB_TURN_USERNAME"),
-		os.Getenv("BOOSTLAB_TURN_CREDENTIAL"),
+		os.Getenv("BOOSTLAB_TURN_SECRET"),
+		os.Getenv("BOOSTLAB_TURN_TTL_SECONDS"),
 	)
 	if err != nil {
 		log.Error("invalid TURN configuration", "error", err)
 		os.Exit(2)
 	}
-	log.Info("voice ICE configuration loaded", "servers", len(voiceIce.IceServers))
+	log.Info("voice ICE configuration loaded", "servers", len(voiceIce.TurnURLs))
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
