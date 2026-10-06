@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -25,6 +26,7 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		node.ID = strings.TrimSpace(node.ID)
 		node.Region = strings.TrimSpace(node.Region)
 		node.Host = strings.TrimSpace(node.Host)
+		node.WireGuardPublicKey = strings.TrimSpace(node.WireGuardPublicKey)
 
 		if node.ID == "" {
 			return nil, fmt.Errorf("node %d: id is required", i)
@@ -38,6 +40,19 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		if node.UDPPort < 1 || node.UDPPort > 65535 {
 			return nil, fmt.Errorf("node %q: invalid udp_port", node.ID)
 		}
+
+		if node.WireGuardPublicKey != "" {
+			if node.WireGuardPort < 1 || node.WireGuardPort > 65535 {
+				return nil, fmt.Errorf("node %q: invalid wireguard_port", node.ID)
+			}
+			decoded, err := base64.StdEncoding.DecodeString(node.WireGuardPublicKey)
+			if err != nil || len(decoded) != 32 {
+				return nil, fmt.Errorf("node %q: invalid WireGuard public key", node.ID)
+			}
+		} else if node.WireGuardPort != 0 {
+			return nil, fmt.Errorf("node %q: wireguard_public_key is required when wireguard_port is set", node.ID)
+		}
+
 		if _, exists := seen[node.ID]; exists {
 			return nil, fmt.Errorf("duplicate node id %q", node.ID)
 		}
