@@ -1,9 +1,18 @@
 package api
 
-import "testing"
+import (
+	"encoding/base64"
+	"strings"
+	"testing"
+	"time"
+)
 
-func TestParseVoiceIceConfigDefaultsToStun(t *testing.T) {
-	config, err := ParseVoiceIceConfig("", "", "")
+func TestVoiceIceProviderDefaultsToStun(t *testing.T) {
+	provider, err := ParseVoiceIceProvider("", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := provider.ConfigFor("", time.Unix(1_700_000_000, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -12,25 +21,43 @@ func TestParseVoiceIceConfigDefaultsToStun(t *testing.T) {
 	}
 }
 
-func TestParseVoiceIceConfigAddsTurn(t *testing.T) {
-	config, err := ParseVoiceIceConfig(
+func TestVoiceIceProviderIssuesShortLivedTurnCredential(t *testing.T) {
+	provider, err := ParseVoiceIceProvider(
 		"turn:turn.example.com:3478,turns:turn.example.com:5349",
-		"boostlab",
-		"secret",
+		"shared-secret",
+		"600",
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Unix(1_700_000_000, 0)
+	config, err := provider.ConfigFor("BL-ABC123", now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(config.IceServers) != 2 {
 		t.Fatalf("expected STUN + TURN, got %#v", config)
 	}
-	if config.IceServers[1].Username != "boostlab" || config.IceServers[1].Credential != "secret" {
-		t.Fatalf("unexpected TURN credentials: %#v", config.IceServers[1])
+	turn := config.IceServers[1]
+	if len(turn.URLs) != 2 {
+		t.Fatalf("expected two TURN URLs, got %#v", turn.URLs)
+	}
+	if !strings.HasPrefix(turn.Username, "1700000600:BL-ABC123") {
+		t.Fatalf("unexpected TURN username: %q", turn.Username)
+	}
+	if _, err := base64.StdEncoding.DecodeString(turn.Credential); err != nil {
+		t.Fatalf("credential is not base64: %v", err)
 	}
 }
 
-func TestParseVoiceIceConfigRejectsMissingCredentials(t *testing.T) {
-	if _, err := ParseVoiceIceConfig("turn:turn.example.com:3478", "", ""); err == nil {
-		t.Fatal("expected missing TURN credentials error")
+func TestVoiceIceProviderRejectsMissingSecret(t *testing.T) {
+	if _, err := ParseVoiceIceProvider("turn:turn.example.com:3478", "", ""); err == nil {
+		t.Fatal("expected missing TURN secret error")
+	}
+}
+
+func TestVoiceIceProviderRejectsInvalidTTL(t *testing.T) {
+	if _, err := ParseVoiceIceProvider("", "", "10"); err == nil {
+		t.Fatal("expected invalid TURN TTL error")
 	}
 }
