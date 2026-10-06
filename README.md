@@ -15,3 +15,12 @@ The control plane never needs to inspect game payloads. Data-plane traffic belon
 ## Status
 
 Repository initialized. API skeleton and CI follow in the first control-plane stage.
+
+
+## Monetization policy
+
+The control plane now exposes `GET /v1/client-policy`.
+
+The current default is a Free tier with advertising enabled and a Premium tier with advertising disabled. During technical testing, Free is not intentionally given a worse route-quality algorithm; production capacity/priority rules will be added only after real infrastructure measurements exist.
+
+This endpoint is configuration, not payment authentication. Production Premium entitlement will require authenticated, server-authoritative verification.
