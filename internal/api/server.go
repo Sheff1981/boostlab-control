@@ -60,7 +60,7 @@ type Server struct {
 	Registry *Registry
 	Social   *SocialHub
 	Games    []GameCatalogEntry
-	VoiceIce VoiceIceConfig
+	VoiceIce VoiceIceProvider
 }
 
 func NewServer(registry *Registry) Server {
@@ -75,7 +75,7 @@ func NewServerWithDependencies(
 	registry *Registry,
 	games []GameCatalogEntry,
 	social *SocialHub,
-	voiceIce VoiceIceConfig,
+	voiceIce VoiceIceProvider,
 ) Server {
 	if social == nil {
 		social = NewSocialHub()
@@ -107,10 +107,18 @@ func (s Server) Routes() http.Handler {
 		_ = json.NewEncoder(w).Encode(s.Games)
 	})
 
-	mux.HandleFunc("GET /v1/voice/ice", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /v1/voice/ice", func(w http.ResponseWriter, r *http.Request) {
+		config, err := s.VoiceIce.ConfigFor(
+			strings.TrimSpace(r.URL.Query().Get("user_id")),
+			time.Now(),
+		)
+		if err != nil {
+			http.Error(w, "invalid voice credentials request", http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
-		_ = json.NewEncoder(w).Encode(s.VoiceIce)
+		_ = json.NewEncoder(w).Encode(config)
 	})
 
 	mux.HandleFunc("GET /v1/squads/{code}/events", func(w http.ResponseWriter, r *http.Request) {
