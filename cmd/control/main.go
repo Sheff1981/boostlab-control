@@ -19,6 +19,16 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	registry := api.NewRegistry()
 
+	seedNodes, err := api.ParseSeedNodes(os.Getenv("BOOSTLAB_NODES_JSON"))
+	if err != nil {
+		log.Error("invalid node bootstrap configuration", "error", err)
+		os.Exit(2)
+	}
+	for _, node := range seedNodes {
+		registry.Upsert(node)
+	}
+	log.Info("bootstrap nodes loaded", "count", len(seedNodes))
+
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           api.NewServer(registry).Routes(),
