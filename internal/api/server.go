@@ -8,12 +8,12 @@ import (
 )
 
 type Node struct {
-	ID       string
-	Region   string
-	Host     string
-	UDPPort  int
-	Healthy  bool
-	Updated  time.Time
+	ID      string    `json:"id"`
+	Region  string    `json:"region"`
+	Host    string    `json:"host"`
+	UDPPort int       `json:"udp_port"`
+	Healthy bool      `json:"healthy"`
+	Updated time.Time `json:"updated_at"`
 }
 
 type Registry struct {
