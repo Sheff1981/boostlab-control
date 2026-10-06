@@ -15,4 +15,14 @@ jobs:
           cache: true
       - run: go test ./...
       - run: go vet ./...
-      - run: go build ./cmd/control
+      - name: Build Linux control plane
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/boostlab-control-linux-amd64 ./cmd/control
+      - name: Upload Linux control plane
+        uses: actions/upload-artifact@v4
+        with:
+          name: boostlab-control-linux-amd64
+          path: dist/boostlab-control-linux-amd64
+          if-no-files-found: error
+          retention-days: 14
