@@ -26,6 +26,7 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		node.ID = strings.TrimSpace(node.ID)
 		node.Region = strings.TrimSpace(node.Region)
 		node.Host = strings.TrimSpace(node.Host)
+		node.RouteAPIURL = strings.TrimSpace(node.RouteAPIURL)
 		node.WireGuardPublicKey = strings.TrimSpace(node.WireGuardPublicKey)
 
 		if node.ID == "" {
@@ -39,6 +40,9 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		}
 		if node.UDPPort < 1 || node.UDPPort > 65535 {
 			return nil, fmt.Errorf("node %q: invalid udp_port", node.ID)
+		}
+		if node.RouteAPIURL != "" && !strings.HasPrefix(node.RouteAPIURL, "https://") {
+			return nil, fmt.Errorf("node %q: route_api_url must use HTTPS", node.ID)
 		}
 
 		if node.WireGuardPublicKey != "" {
