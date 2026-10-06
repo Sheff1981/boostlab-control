@@ -1,0 +1,29 @@
+package api
+
+import "testing"
+
+func TestParseSeedNodes(t *testing.T) {
+	nodes, err := ParseSeedNodes(`[
+		{"id":"eu-1","region":"eu-west","host":"203.0.113.10","udp_port":51821,"healthy":true},
+		{"id":"eu-2","region":"eu-central","host":"203.0.113.11","udp_port":51821,"healthy":true}
+	]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(nodes))
+	}
+	if nodes[0].ID != "eu-2" {
+		t.Fatalf("expected deterministic region sort, got %q first", nodes[0].ID)
+	}
+}
+
+func TestParseSeedNodesRejectsBadPort(t *testing.T) {
+	_, err := ParseSeedNodes(`[
+		{"id":"bad","region":"test","host":"127.0.0.1","udp_port":0,"healthy":true}
+	]`)
+	if err == nil {
+		t.Fatal("expected invalid port error")
+	}
+}
