@@ -82,12 +82,12 @@ func TestVoiceSignalRequiresPayload(t *testing.T) {
 
 
 func TestVoiceIceEndpoint(t *testing.T) {
-	voice, err := ParseVoiceIceConfig("turn:turn.example.com:3478", "user", "pass")
+	voice, err := ParseVoiceIceProvider("turn:turn.example.com:3478", "shared-secret", "600")
 	if err != nil {
 		t.Fatal(err)
 	}
 	h := NewServerWithDependencies(NewRegistry(), nil, NewSocialHub(), voice).Routes()
-	req := httptest.NewRequest(http.MethodGet, "/v1/voice/ice", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/voice/ice?user_id=BL-ABC123", nil)
 	res := httptest.NewRecorder()
 	h.ServeHTTP(res, req)
 
@@ -98,7 +98,7 @@ func TestVoiceIceEndpoint(t *testing.T) {
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
 		t.Fatal(err)
 	}
-	if len(payload.IceServers) != 2 {
-		t.Fatalf("expected STUN + TURN, got %#v", payload)
+	if len(payload.IceServers) != 2 || payload.IceServers[1].Credential == "" {
+		t.Fatalf("expected STUN + temporary TURN, got %#v", payload)
 	}
 }
