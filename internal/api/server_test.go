@@ -102,3 +102,41 @@ func TestVoiceIceEndpoint(t *testing.T) {
 		t.Fatalf("expected STUN + temporary TURN, got %#v", payload)
 	}
 }
+
+
+func TestDirectChatAPI(t *testing.T) {
+	h := NewServer(NewRegistry()).Routes()
+
+	body, _ := json.Marshal(map[string]string{
+		"sender": "BL-A123",
+		"text":   "private hello",
+	})
+	post := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/direct/BL-B456/events",
+		bytes.NewReader(body),
+	)
+	postRes := httptest.NewRecorder()
+	h.ServeHTTP(postRes, post)
+	if postRes.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", postRes.Code, postRes.Body.String())
+	}
+
+	get := httptest.NewRequest(
+		http.MethodGet,
+		"/v1/direct/BL-A123/events?self=BL-B456&after=0",
+		nil,
+	)
+	getRes := httptest.NewRecorder()
+	h.ServeHTTP(getRes, get)
+	if getRes.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", getRes.Code)
+	}
+	var events []SquadEvent
+	if err := json.NewDecoder(getRes.Body).Decode(&events); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].Sender != "BL-A123" || events[0].Text != "private hello" {
+		t.Fatalf("unexpected direct events: %#v", events)
+	}
+}
