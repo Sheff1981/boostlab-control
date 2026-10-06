@@ -162,7 +162,11 @@ func (s Server) Routes() http.Handler {
 			return
 		}
 
-		event := s.Social.Append(code, input.Sender, input.Type, input.Text, input.Payload)
+		event, err := s.Social.Append(code, input.Sender, input.Type, input.Text, input.Payload)
+		if err != nil {
+			http.Error(w, "failed to persist event", http.StatusInternalServerError)
+			return
+		}
 		s.Social.Touch(code, input.Sender)
 
 		w.Header().Set("Content-Type", "application/json")
