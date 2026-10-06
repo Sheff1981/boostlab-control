@@ -79,3 +79,26 @@ func TestVoiceSignalRequiresPayload(t *testing.T) {
 		t.Fatalf("expected 400, got %d", res.Code)
 	}
 }
+
+
+func TestVoiceIceEndpoint(t *testing.T) {
+	voice, err := ParseVoiceIceConfig("turn:turn.example.com:3478", "user", "pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := NewServerWithDependencies(NewRegistry(), nil, NewSocialHub(), voice).Routes()
+	req := httptest.NewRequest(http.MethodGet, "/v1/voice/ice", nil)
+	res := httptest.NewRecorder()
+	h.ServeHTTP(res, req)
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.Code)
+	}
+	var payload VoiceIceConfig
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.IceServers) != 2 {
+		t.Fatalf("expected STUN + TURN, got %#v", payload)
+	}
+}
