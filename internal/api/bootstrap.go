@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -41,8 +42,13 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		if node.UDPPort < 1 || node.UDPPort > 65535 {
 			return nil, fmt.Errorf("node %q: invalid udp_port", node.ID)
 		}
-		if node.RouteAPIURL != "" && !strings.HasPrefix(node.RouteAPIURL, "https://") {
-			return nil, fmt.Errorf("node %q: route_api_url must use HTTPS", node.ID)
+		if node.RouteAPIURL != "" {
+			parsed, err := url.ParseRequestURI(node.RouteAPIURL)
+			if err != nil ||
+				parsed.Scheme != "https" ||
+				parsed.Host == "" {
+				return nil, fmt.Errorf("node %q: route_api_url must be a valid HTTPS URL", node.ID)
+			}
 		}
 
 		if node.WireGuardPublicKey != "" {
