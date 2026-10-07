@@ -108,3 +108,64 @@ func TestDeviceAuthRejectsWrongSignatureAndExpiredChallenge(t *testing.T) {
 		t.Fatal("expected expired challenge to fail")
 	}
 }
+
+
+func TestPersistentDeviceEnrollment(t *testing.T) {
+	dataFile := t.TempDir() + "/devices.json"
+	const enrollmentCode = "boostlab-join-2026"
+	now := time.Unix(1_800_000_000, 0)
+	key, publicKey := makeDeviceKey(t)
+
+	hub, err := NewPersistentDeviceAuthHub(dataFile, enrollmentCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	challenge, err := hub.NewChallengeWithEnrollment(publicKey, "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hub.Exchange(
+		challenge.ID,
+		signChallenge(t, key, challenge.Message),
+		now.Add(time.Second),
+	); err == nil {
+		t.Fatal("expected unenrolled device without code to fail")
+	}
+
+	challenge, err = hub.NewChallengeWithEnrollment(publicKey, enrollmentCode, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := hub.Exchange(
+		challenge.ID,
+		signChallenge(t, key, challenge.Message),
+		now.Add(time.Second),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.DeviceID == "" {
+		t.Fatal("expected enrolled device id")
+	}
+
+	restarted, err := NewPersistentDeviceAuthHub(dataFile, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenge, err = restarted.NewChallengeWithEnrollment(
+		publicKey,
+		"",
+		now.Add(2*time.Second),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := restarted.Exchange(
+		challenge.ID,
+		signChallenge(t, key, challenge.Message),
+		now.Add(3*time.Second),
+	); err != nil {
+		t.Fatalf("persisted device should authenticate without code: %v", err)
+	}
+}
