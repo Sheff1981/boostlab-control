@@ -49,3 +49,13 @@ func TestParseSeedNodesRejectsHTTPRouteAPI(t *testing.T) {
 		t.Fatal("expected insecure route API rejection")
 	}
 }
+
+
+func TestParseSeedNodesRejectsIncompleteHTTPSRouteAPI(t *testing.T) {
+	_, err := ParseSeedNodes(`[
+		{"id":"eu-1","region":"eu","host":"203.0.113.10","udp_port":51821,"route_api_url":"https://","healthy":true}
+	]`)
+	if err == nil {
+		t.Fatal("expected malformed HTTPS route API rejection")
+	}
+}
