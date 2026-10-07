@@ -13,6 +13,9 @@ import (
 type Node struct {
 	ID                 string    `json:"id"`
 	Region             string    `json:"region"`
+	CountryCode        string    `json:"country_code,omitempty"`
+	City               string    `json:"city,omitempty"`
+	DisplayName        string    `json:"display_name,omitempty"`
 	Host               string    `json:"host"`
 	UDPPort            int       `json:"udp_port"`
 	RouteAPIURL        string    `json:"route_api_url,omitempty"`
