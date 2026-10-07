@@ -66,6 +66,7 @@ type Server struct {
 	Games        []GameCatalogEntry
 	RouteTargets []GameRouteTarget
 	VoiceIce     VoiceIceProvider
+	Auth         *DeviceAuthHub
 }
 
 func NewServer(registry *Registry) Server {
@@ -101,6 +102,7 @@ func NewServerWithFullDependencies(
 		Games:        append([]GameCatalogEntry(nil), games...),
 		RouteTargets: append([]GameRouteTarget(nil), routeTargets...),
 		VoiceIce:     voiceIce,
+		Auth:         NewDeviceAuthHub(),
 	}
 }
 
@@ -109,6 +111,73 @@ func (s Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
+	})
+
+	mux.HandleFunc("POST /v1/auth/challenge", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+		defer r.Body.Close()
+
+		var input struct {
+			PublicKey string `json:"public_key"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		challenge, err := s.Auth.NewChallenge(strings.TrimSpace(input.PublicKey), time.Now())
+		if err != nil {
+			http.Error(w, "invalid device public key", http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(struct {
+			ChallengeID string    `json:"challenge_id"`
+			Message     string    `json:"message"`
+			ExpiresAt   time.Time `json:"expires_at"`
+		}{
+			ChallengeID: challenge.ID,
+			Message:     challenge.Message,
+			ExpiresAt:   challenge.ExpiresAt,
+		})
+	})
+
+	mux.HandleFunc("POST /v1/auth/session", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+		defer r.Body.Close()
+
+		var input struct {
+			ChallengeID string `json:"challenge_id"`
+			Signature   string `json:"signature"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		session, err := s.Auth.Exchange(
+			strings.TrimSpace(input.ChallengeID),
+			strings.TrimSpace(input.Signature),
+			time.Now(),
+		)
+		if err != nil {
+			http.Error(w, "device authentication failed", http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(struct {
+			DeviceID    string    `json:"device_id"`
+			AccessToken string    `json:"access_token"`
+			ExpiresAt   time.Time `json:"expires_at"`
+		}{
+			DeviceID:    session.DeviceID,
+			AccessToken: session.Token,
+			ExpiresAt:   session.ExpiresAt,
+		})
 	})
 
 	mux.HandleFunc("GET /v1/nodes", func(w http.ResponseWriter, _ *http.Request) {
