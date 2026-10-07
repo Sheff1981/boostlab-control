@@ -127,14 +127,19 @@ func (s Server) Routes() http.Handler {
 		defer r.Body.Close()
 
 		var input struct {
-			PublicKey string `json:"public_key"`
+			PublicKey      string `json:"public_key"`
+			EnrollmentCode string `json:"enrollment_code"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			http.Error(w, "invalid JSON", http.StatusBadRequest)
 			return
 		}
 
-		challenge, err := s.Auth.NewChallenge(strings.TrimSpace(input.PublicKey), time.Now())
+		challenge, err := s.Auth.NewChallengeWithEnrollment(
+			strings.TrimSpace(input.PublicKey),
+			strings.TrimSpace(input.EnrollmentCode),
+			time.Now(),
+		)
 		if err != nil {
 			http.Error(w, "invalid device public key", http.StatusBadRequest)
 			return
