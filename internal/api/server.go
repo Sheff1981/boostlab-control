@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -41,6 +42,13 @@ func (r *Registry) Upsert(node Node) {
 	r.nodes[node.ID] = node
 }
 
+func (r *Registry) Get(id string) (Node, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	node, ok := r.nodes[strings.TrimSpace(id)]
+	return node, ok
+}
+
 func (r *Registry) List() []Node {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -65,8 +73,9 @@ type Server struct {
 	Social       *SocialHub
 	Games        []GameCatalogEntry
 	RouteTargets []GameRouteTarget
-	VoiceIce     VoiceIceProvider
-	Auth         *DeviceAuthHub
+	VoiceIce           VoiceIceProvider
+	Auth               *DeviceAuthHub
+	ProvisioningSecret []byte
 }
 
 func NewServer(registry *Registry) Server {
@@ -177,6 +186,68 @@ func (s Server) Routes() http.Handler {
 			DeviceID:    session.DeviceID,
 			AccessToken: session.Token,
 			ExpiresAt:   session.ExpiresAt,
+		})
+	})
+
+	mux.HandleFunc("POST /v1/provision/{node}", func(w http.ResponseWriter, r *http.Request) {
+		session, ok := s.Auth.AuthenticateBearer(r.Header.Get("Authorization"), time.Now())
+		if !ok {
+			http.Error(w, "device session required", http.StatusUnauthorized)
+			return
+		}
+		if len(s.ProvisioningSecret) < 32 {
+			http.Error(w, "provisioning is not configured", http.StatusServiceUnavailable)
+			return
+		}
+
+		nodeID := strings.TrimSpace(r.PathValue("node"))
+		node, ok := s.Registry.Get(nodeID)
+		if !ok || !node.Healthy || node.RouteAPIURL == "" {
+			http.Error(w, "gateway unavailable", http.StatusNotFound)
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+		defer r.Body.Close()
+		var input struct {
+			WireGuardPublicKey string `json:"wireguard_public_key"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		wireGuardKey := strings.TrimSpace(input.WireGuardPublicKey)
+		decoded, err := base64.StdEncoding.DecodeString(wireGuardKey)
+		if err != nil || len(decoded) != 32 {
+			http.Error(w, "invalid WireGuard public key", http.StatusBadRequest)
+			return
+		}
+
+		ticket, expiresAt, err := issueProvisioningTicket(
+			s.ProvisioningSecret,
+			node.ID,
+			session.DeviceID,
+			wireGuardKey,
+			time.Now(),
+		)
+		if err != nil {
+			http.Error(w, "failed to issue provisioning ticket", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(struct {
+			DeviceID   string    `json:"device_id"`
+			GatewayURL string    `json:"gateway_url"`
+			Ticket     string    `json:"ticket"`
+			ExpiresAt  time.Time `json:"expires_at"`
+		}{
+			DeviceID:   session.DeviceID,
+			GatewayURL: node.RouteAPIURL,
+			Ticket:     ticket,
+			ExpiresAt:  expiresAt,
 		})
 	})
 
