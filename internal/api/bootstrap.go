@@ -26,6 +26,9 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 
 		node.ID = strings.TrimSpace(node.ID)
 		node.Region = strings.TrimSpace(node.Region)
+		node.CountryCode = strings.ToUpper(strings.TrimSpace(node.CountryCode))
+		node.City = strings.TrimSpace(node.City)
+		node.DisplayName = strings.TrimSpace(node.DisplayName)
 		node.Host = strings.TrimSpace(node.Host)
 		node.RouteAPIURL = strings.TrimSpace(node.RouteAPIURL)
 		node.WireGuardPublicKey = strings.TrimSpace(node.WireGuardPublicKey)
@@ -35,6 +38,19 @@ func ParseSeedNodes(raw string) ([]Node, error) {
 		}
 		if node.Region == "" {
 			return nil, fmt.Errorf("node %q: region is required", node.ID)
+		}
+		if node.CountryCode != "" {
+			if len(node.CountryCode) != 2 {
+				return nil, fmt.Errorf("node %q: country_code must contain two letters", node.ID)
+			}
+			for _, r := range node.CountryCode {
+				if r < 'A' || r > 'Z' {
+					return nil, fmt.Errorf("node %q: invalid country_code", node.ID)
+				}
+			}
+		}
+		if len(node.City) > 80 || len(node.DisplayName) > 120 {
+			return nil, fmt.Errorf("node %q: location metadata is too long", node.ID)
 		}
 		if node.Host == "" {
 			return nil, fmt.Errorf("node %q: host is required", node.ID)
