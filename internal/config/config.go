@@ -3,8 +3,9 @@ package config
 import "os"
 
 type Config struct {
-	HTTPAddr       string
-	SocialDataFile string
+	HTTPAddr           string
+	SocialDataFile     string
+	ProvisioningSecret string
 }
 
 func Load() Config {
@@ -17,7 +18,8 @@ func Load() Config {
 		dataFile = "./data/social.json"
 	}
 	return Config{
-		HTTPAddr:       addr,
-		SocialDataFile: dataFile,
+		HTTPAddr:           addr,
+		SocialDataFile:     dataFile,
+		ProvisioningSecret: os.Getenv("BOOSTLAB_PROVISIONING_SECRET"),
 	}
 }
