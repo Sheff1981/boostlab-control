@@ -302,6 +302,11 @@ func constantTimeEqual(value, expected string) bool {
 	return subtle.ConstantTimeCompare([]byte(value), []byte(expected)) == 1
 }
 
+const (
+	maxPendingChallenges = 4096
+	maxActiveSessions     = 8192
+)
+
 func randomToken(size int) (string, error) {
 	buf := make([]byte, size)
 	if _, err := rand.Read(buf); err != nil {
