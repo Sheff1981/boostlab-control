@@ -6,6 +6,8 @@ type Config struct {
 	HTTPAddr           string
 	SocialDataFile     string
 	ProvisioningSecret string
+	DeviceAuthDataFile  string
+	EnrollmentCode      string
 }
 
 func Load() Config {
@@ -21,5 +23,15 @@ func Load() Config {
 		HTTPAddr:           addr,
 		SocialDataFile:     dataFile,
 		ProvisioningSecret: os.Getenv("BOOSTLAB_PROVISIONING_SECRET"),
+		DeviceAuthDataFile: envOr("BOOSTLAB_DEVICE_AUTH_DATA_FILE", "./data/devices.json"),
+		EnrollmentCode:     os.Getenv("BOOSTLAB_ENROLLMENT_CODE"),
 	}
+}
+
+
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }
