@@ -61,6 +61,16 @@ func main() {
 	}
 	log.Info("voice ICE configuration loaded", "servers", len(voiceIce.TurnURLs))
 
+	authHub, err := api.NewPersistentDeviceAuthHub(
+		cfg.DeviceAuthDataFile,
+		cfg.EnrollmentCode,
+	)
+	if err != nil {
+		log.Error("failed to load device auth registry", "error", err)
+		os.Exit(2)
+	}
+	log.Info("device auth registry loaded", "path", cfg.DeviceAuthDataFile)
+
 	apiServer := api.NewServerWithFullDependencies(
 		registry,
 		games,
@@ -68,6 +78,7 @@ func main() {
 		social,
 		voiceIce,
 	)
+	apiServer.Auth = authHub
 	apiServer.ProvisioningSecret = []byte(cfg.ProvisioningSecret)
 
 	server := &http.Server{
