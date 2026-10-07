@@ -102,6 +102,9 @@ func (h *DeviceAuthHub) NewChallengeWithEnrollment(
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.cleanupLocked(now)
+	if len(h.challenges) >= maxPendingChallenges {
+		return DeviceChallenge{}, fmt.Errorf("too many pending authentication challenges")
+	}
 
 	authorized := h.authorizedKeys[id] == publicKeyBase64
 	enrollmentAllowed := authorized || h.openEnrollment || constantTimeEqual(
@@ -167,6 +170,10 @@ func (h *DeviceAuthHub) Exchange(challengeID, signatureBase64 string, now time.T
 			delete(h.authorizedKeys, challenge.DeviceID)
 			return DeviceSession{}, err
 		}
+	}
+
+	if len(h.sessions) >= maxActiveSessions {
+		return DeviceSession{}, fmt.Errorf("too many active device sessions")
 	}
 
 	token, err := randomToken(32)
