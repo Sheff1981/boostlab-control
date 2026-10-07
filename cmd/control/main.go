@@ -61,15 +61,18 @@ func main() {
 	}
 	log.Info("voice ICE configuration loaded", "servers", len(voiceIce.TurnURLs))
 
+	apiServer := api.NewServerWithFullDependencies(
+		registry,
+		games,
+		routeTargets,
+		social,
+		voiceIce,
+	)
+	apiServer.ProvisioningSecret = []byte(cfg.ProvisioningSecret)
+
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.NewServerWithFullDependencies(
-			registry,
-			games,
-			routeTargets,
-			social,
-			voiceIce,
-		).Routes(),
+		Handler:           apiServer.Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
