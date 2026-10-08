@@ -93,6 +93,14 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	healthMonitor := api.NewGatewayHealthMonitor(
+		registry,
+		log,
+		15*time.Second,
+	)
+	go healthMonitor.Run(ctx)
+	log.Info("gateway health monitor started", "interval", "15s")
+
 	go func() {
 		log.Info("control API listening", "addr", cfg.HTTPAddr)
 		err := server.ListenAndServe()
