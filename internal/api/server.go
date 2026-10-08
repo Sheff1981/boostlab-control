@@ -49,6 +49,21 @@ func (r *Registry) Get(id string) (Node, bool) {
 	return node, ok
 }
 
+func (r *Registry) SetHealthy(id string, healthy bool) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	id = strings.TrimSpace(id)
+	node, ok := r.nodes[id]
+	if !ok {
+		return false
+	}
+	node.Healthy = healthy
+	node.Updated = time.Now().UTC()
+	r.nodes[id] = node
+	return true
+}
+
 func (r *Registry) List() []Node {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
