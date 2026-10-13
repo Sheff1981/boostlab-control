@@ -64,3 +64,28 @@ Recommended paths:
 
 - `BOOSTLAB_SOCIAL_DATA_FILE=/var/lib/boostlab-control/social.json`
 - `BOOSTLAB_DEVICE_AUTH_DATA_FILE=/var/lib/boostlab-control/devices.json`
+
+
+## Adding a new region safely
+
+Use `nodectl` instead of editing the JSON by hand. It validates the same rules as Control and prints a complete replacement value for `BOOSTLAB_NODES_JSON`.
+
+Example for a new Los Angeles node:
+
+    BOOSTLAB_NODES_JSON='<CURRENT_JSON>' go run ./cmd/nodectl \
+      -id lax-1 \
+      -region north-america \
+      -country US \
+      -city 'Los Angeles' \
+      -name 'US - Los Angeles' \
+      -host 198.51.100.20 \
+      -udp-port 51821 \
+      -route-api https://lax-1.example.com \
+      -wg-key '<SERVER_PUBLIC_KEY>' \
+      -wg-port 51820
+
+The command outputs one validated line:
+
+    BOOSTLAB_NODES_JSON=[...]
+
+Replace the env value and restart only BOOSTLAB Control. Android clients discover the new city dynamically; no APK update is required.
